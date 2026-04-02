@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orders.Api", "Orders.Api.cs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Inventory.Function", "..\InventoryFunction\Inventory.Function.csproj", "{DEDEC0CC-3FC5-4194-9FAB-A0CCA315133C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Payment.Function", "..\Payment.Function\Payment.Function.csproj", "{55025406-CA5E-4BA7-BEBC-3D3B55D8FB3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{DEDEC0CC-3FC5-4194-9FAB-A0CCA315133C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DEDEC0CC-3FC5-4194-9FAB-A0CCA315133C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DEDEC0CC-3FC5-4194-9FAB-A0CCA315133C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55025406-CA5E-4BA7-BEBC-3D3B55D8FB3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55025406-CA5E-4BA7-BEBC-3D3B55D8FB3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55025406-CA5E-4BA7-BEBC-3D3B55D8FB3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55025406-CA5E-4BA7-BEBC-3D3B55D8FB3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
