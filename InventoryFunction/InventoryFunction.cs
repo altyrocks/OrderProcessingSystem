@@ -1,57 +1,56 @@
 ﻿using System.Text.Json;
-using Inventory.Function.Messaging;
-using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using Shared.Messaging;
 
 namespace Inventory.Function;
 
-public class InventoryFunction(ILoggerFactory loggerFactory)
+public class InventoryFunction
 {
-    private readonly ILogger _logger = loggerFactory.CreateLogger<InventoryFunction>();
+    private readonly ILogger _logger;
+
+    public InventoryFunction(ILoggerFactory loggerFactory)
+    {
+        _logger = loggerFactory.CreateLogger<InventoryFunction>();
+    }
 
     [Function("InventoryFunction")]
     public void Run(
         [ServiceBusTrigger("orders", "inventory-sub", Connection = "ServiceBusConnection")]
-    string message)
+        string message)
     {
         try
         {
-            // Handle PaymentFailed (compensation)
-            if (message.Contains("Reason"))
+            var envelope = JsonSerializer.Deserialize<EventEnvelope<JsonElement>>(message);
+
+            if (envelope == null)
             {
-                var failed = JsonSerializer.Deserialize<PaymentFailedEvent>(message);
-
-                if (failed == null)
-                {
-                    _logger.LogWarning("⚠️ Failed to deserialize PaymentFailedEvent");
-                    return;
-                }
-
-                _logger.LogInformation($"🔄 Releasing inventory for Order: {failed.OrderId}");
-                _logger.LogInformation($"Reason: {failed.Reason}");
-
+                _logger.LogWarning("⚠️ Invalid message format");
                 return;
             }
 
-            // Handle OrderCreated
-            if (message.Contains("ProductName"))
+            _logger.LogInformation($"🔗 CorrelationId: {envelope.CorrelationId}");
+
+            switch (envelope.EventType)
             {
-                var order = JsonSerializer.Deserialize<OrderCreatedEvent>(message);
+                case "OrderCreated":
+                    var order = envelope.Data.Deserialize<OrderCreatedEvent>();
 
-                if (order == null)
-                {
-                    _logger.LogWarning("⚠️ Failed to deserialize OrderCreatedEvent");
-                    return;
-                }
+                    _logger.LogInformation($"📦 Reserving inventory for Order: {order?.OrderId}");
+                    _logger.LogInformation($"Product: {order?.ProductName}, Qty: {order?.Quantity}");
+                    break;
 
-                _logger.LogInformation($"📦 Reserving inventory for Order: {order.OrderId}");
-                _logger.LogInformation($"Product: {order.ProductName}, Qty: {order.Quantity}");
+                case "PaymentFailed":
+                    var failed = envelope.Data.Deserialize<PaymentFailedEvent>();
 
-                return;
+                    _logger.LogInformation($"🔄 Releasing inventory for Order: {failed?.OrderId}");
+                    _logger.LogInformation($"Reason: {failed?.Reason}");
+                    break;
+
+                default:
+                    _logger.LogInformation("ℹ️ Ignoring non-relevant event");
+                    break;
             }
-
-            // Unknown message type
-            _logger.LogInformation("ℹ️ Ignoring non-relevant event");
         }
         catch (Exception ex)
         {

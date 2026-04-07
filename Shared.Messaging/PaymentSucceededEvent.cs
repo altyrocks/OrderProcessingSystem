@@ -1,4 +1,4 @@
-﻿namespace Payment.Function.Messaging
+﻿namespace Shared.Messaging
 {
     public class PaymentSucceededEvent
     {

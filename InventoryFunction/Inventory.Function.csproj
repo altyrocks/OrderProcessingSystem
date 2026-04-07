@@ -22,4 +22,8 @@
     <ProjectReference Include="..\Orders.Api\Orders.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Shared.Messaging\Shared.Messaging.csproj" />
+  </ItemGroup>
+
 </Project>

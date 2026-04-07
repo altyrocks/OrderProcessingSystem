@@ -1,6 +1,6 @@
 ﻿using Orders.Api.Models;
 using Orders.Api.Services;
-using Orders.Api.Messaging;
+using Shared.Messaging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Orders.Api.Controllers;
@@ -29,7 +29,16 @@ public class OrdersController(ServiceBusPublisher publisher) : ControllerBase
             Quantity = order.Quantity
         };
 
-        await _publisher.PublishAsync(orderCreatedEvent);
+        var correlationId = Guid.NewGuid().ToString();
+
+        var envelope = new EventEnvelope<OrderCreatedEvent>
+        {
+            EventType = "OrderCreated",
+            CorrelationId = correlationId,
+            Data = orderCreatedEvent
+        };
+
+        await _publisher.PublishAsync(envelope);
 
         return Ok(order);
     }

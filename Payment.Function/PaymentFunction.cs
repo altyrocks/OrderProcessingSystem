@@ -1,6 +1,6 @@
-﻿using System.Text.Json;
+﻿using Shared.Messaging;
+using System.Text.Json;
 using Payment.Function.Services;
-using Payment.Function.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Functions.Worker;
 
@@ -14,14 +14,20 @@ public class PaymentFunction(ILoggerFactory loggerFactory, ServiceBusPublisher p
     [Function("PaymentFunction")]
     public async Task Run(
         [ServiceBusTrigger("orders", "payment-sub", Connection = "ServiceBusConnection")]
-        string message)
+    string message)
     {
-        // Ignore non-OrderCreated events
-        if (!message.Contains("ProductName"))
-            return; 
+        var envelope = JsonSerializer.Deserialize<EventEnvelope<OrderCreatedEvent>>(message);
 
-        var order = JsonSerializer.Deserialize<OrderCreatedEvent>(message);
+        // Only process OrderCreated events
+        if (envelope == null || envelope.EventType != "OrderCreated")
+        {
+            return;
+        }
 
+        var order = envelope.Data;
+        var correlationId = envelope.CorrelationId;
+
+        _logger.LogInformation($"🔗 CorrelationId: {correlationId}");
         _logger.LogInformation($"💳 Processing Payment for Order: {order?.OrderId}");
 
         var success = new Random().Next(0, 2) == 0;
@@ -30,24 +36,34 @@ public class PaymentFunction(ILoggerFactory loggerFactory, ServiceBusPublisher p
         {
             _logger.LogInformation("✅ Payment succeeded");
 
-            var evt = new PaymentSucceededEvent
+            var result = new EventEnvelope<PaymentSucceededEvent>
             {
-                OrderId = order!.OrderId
+                EventType = "PaymentSucceeded",
+                CorrelationId = correlationId,
+                Data = new PaymentSucceededEvent
+                {
+                    OrderId = order!.OrderId
+                }
             };
 
-            await _publisher.PublishAsync(evt);
+            await _publisher.PublishAsync(result);
         }
         else
         {
             _logger.LogInformation("❌ Payment failed");
 
-            var evt = new PaymentFailedEvent
+            var result = new EventEnvelope<PaymentFailedEvent>
             {
-                OrderId = order!.OrderId,
-                Reason = "Card declined"
+                EventType = "PaymentFailed",
+                CorrelationId = correlationId,
+                Data = new PaymentFailedEvent
+                {
+                    OrderId = order!.OrderId,
+                    Reason = "Card declined"
+                }
             };
 
-            await _publisher.PublishAsync(evt);
+            await _publisher.PublishAsync(result);
         }
     }
 }

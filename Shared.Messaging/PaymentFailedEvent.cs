@@ -1,4 +1,4 @@
-﻿namespace Inventory.Function.Messaging;
+﻿namespace Shared.Messaging;
 
 public class PaymentFailedEvent
 {
