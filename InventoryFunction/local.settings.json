@@ -1,7 +1,7 @@
 {
   "IsEncrypted": false,
   "Values": {
-    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=stargatestorage123;AccountKey=tW3Rkdn0bJ3InSKKR6j6yRzHUV0RHuSatolrxM3VaR/ynz58k3ghnrRaKcZIYNgq6aZHLaKn2c4J+ASt92eI6A==;EndpointSuffix=core.windows.net",
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=stargatestorage123;AccountKey=f3LbL8imZJElYOs37jySqNoctPbqO6u8cakjasHcZ95Yl0ITRZthBpxM9OdNpzoZZVN80G2incdu+AStSv+erg==;EndpointSuffix=core.windows.net",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "ServiceBusConnection": "Endpoint=sb://stargate-bus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=nAAY1SzjgX4oRan2c3MhpuTMN1wlEmNwQ+ASbG8ubcM="
   }

@@ -48,4 +48,19 @@ public class OrdersController(ServiceBusPublisher publisher) : ControllerBase
     {
         return Ok(_orders);
     }
+
+    [HttpGet("{id}")]
+    public IActionResult GetOrder(Guid id)
+    {
+        var order = _orders.FirstOrDefault(o => o.Id == id);
+
+        if (order == null)
+            return NotFound();
+
+        return Ok(new
+        {
+            orderId = order.Id,
+            status = order.Status
+        });
+    }
 }
