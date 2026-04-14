@@ -362,3 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /Shared.Messaging/Class1.cs
+
+# - Local .JSON files with secrets, such as connection strings, API keys, etc. These should not be checked in to source control.
+**/local.settings.json
