@@ -1,17 +1,16 @@
-﻿using Orders.Api.Models;
-using Orders.Api.Services;
 using Shared.Messaging;
+using Orders.Api.Models;
+using Orders.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Orders.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class OrdersController(ServiceBusPublisher publisher) : ControllerBase
+public class OrdersController(ServiceBusPublisher publisher, OrderStore orderStore) : ControllerBase
 {
-    private static readonly List<Order> _orders = new();
-
     private readonly ServiceBusPublisher _publisher = publisher;
+    private readonly OrderStore _orderStore = orderStore;
 
     [HttpPost]
     public async Task<IActionResult> CreateOrder(Order order)
@@ -20,7 +19,7 @@ public class OrdersController(ServiceBusPublisher publisher) : ControllerBase
         order.Status = "Pending";
         order.CreatedAt = DateTime.UtcNow;
 
-        _orders.Add(order);
+        _orderStore.Add(order);
 
         var orderCreatedEvent = new OrderCreatedEvent
         {
@@ -46,13 +45,13 @@ public class OrdersController(ServiceBusPublisher publisher) : ControllerBase
     [HttpGet]
     public IActionResult GetOrders()
     {
-        return Ok(_orders);
+        return Ok(_orderStore.GetAll());
     }
 
     [HttpGet("{id}")]
     public IActionResult GetOrder(Guid id)
     {
-        var order = _orders.FirstOrDefault(o => o.Id == id);
+        var order = _orderStore.Get(id);
 
         if (order == null)
             return NotFound();

@@ -9,7 +9,9 @@ namespace Orders.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddSingleton<OrderStore>();
             builder.Services.AddSingleton<ServiceBusPublisher>();
+            builder.Services.AddHostedService<OrderEventsSubscriber>();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

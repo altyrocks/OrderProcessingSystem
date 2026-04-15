@@ -16,10 +16,10 @@ public class PaymentFunction(ILoggerFactory loggerFactory, ServiceBusPublisher p
         [ServiceBusTrigger("orders", "payment-sub", Connection = "ServiceBusConnection")]
     string message)
     {
-        var envelope = JsonSerializer.Deserialize<EventEnvelope<OrderCreatedEvent>>(message);
+        var envelope = JsonSerializer.Deserialize<EventEnvelope<InventoryReservedEvent>>(message);
 
-        // Only process OrderCreated events
-        if (envelope == null || envelope.EventType != "OrderCreated")
+        // Only process InventoryReserved events
+        if (envelope == null || envelope.EventType != "InventoryReserved")
         {
             return;
         }
