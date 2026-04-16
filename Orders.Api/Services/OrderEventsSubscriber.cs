@@ -1,6 +1,7 @@
-using Shared.Messaging;
 using System.Text.Json;
 using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Hosting;
+using Shared.Messaging;
 
 namespace Orders.Api.Services;
 
@@ -9,17 +10,20 @@ public class OrderEventsSubscriber : BackgroundService
     private readonly IConfiguration _configuration;
     private readonly ILogger<OrderEventsSubscriber> _logger;
     private readonly OrderStore _orderStore;
+    private readonly OrderReadCache _orderReadCache;
     private ServiceBusClient? _client;
     private ServiceBusProcessor? _processor;
 
     public OrderEventsSubscriber(
         IConfiguration configuration,
         ILogger<OrderEventsSubscriber> logger,
-        OrderStore orderStore)
+        OrderStore orderStore,
+        OrderReadCache orderReadCache)
     {
         _configuration = configuration;
         _logger = logger;
         _orderStore = orderStore;
+        _orderReadCache = orderReadCache;
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
@@ -79,10 +83,10 @@ public class OrderEventsSubscriber : BackgroundService
 
         var updated = envelope.EventType switch
         {
-            "InventoryReserved" => UpdateOrderStatus<InventoryReservedEvent>(envelope, "Inventory Reserved"),
-            "PaymentSucceeded" => UpdateOrderStatus<PaymentSucceededEvent>(envelope, "Payment Succeeded"),
-            "PaymentFailed" => UpdateOrderStatus<PaymentFailedEvent>(envelope, "Payment Failed"),
-            "InventoryReleased" => UpdateOrderStatus<InventoryReleasedEvent>(envelope, "Inventory Released"),
+            "InventoryReserved" => await UpdateOrderStatusAsync<InventoryReservedEvent>(envelope, "Inventory Reserved"),
+            "PaymentSucceeded" => await UpdateOrderStatusAsync<PaymentSucceededEvent>(envelope, "Payment Succeeded"),
+            "PaymentFailed" => await UpdateOrderStatusAsync<PaymentFailedEvent>(envelope, "Payment Failed"),
+            "InventoryReleased" => await UpdateOrderStatusAsync<InventoryReleasedEvent>(envelope, "Inventory Released"),
             _ => false
         };
 
@@ -100,7 +104,7 @@ public class OrderEventsSubscriber : BackgroundService
         return Task.CompletedTask;
     }
 
-    private bool UpdateOrderStatus<T>(EventEnvelope<JsonElement> envelope, string status) where T : class
+    private async Task<bool> UpdateOrderStatusAsync<T>(EventEnvelope<JsonElement> envelope, string status) where T : class
     {
         var data = envelope.Data.Deserialize<T>();
 
@@ -119,13 +123,16 @@ public class OrderEventsSubscriber : BackgroundService
             return false;
         }
 
-        var updated = _orderStore.UpdateStatus(orderId, status);
+        var updatedOrder = _orderStore.UpdateStatus(orderId, status);
 
-        if (updated)
+        if (updatedOrder == null)
         {
-            _logger.LogInformation("Order {OrderId} updated to status {Status}.", orderId, status);
+            return false;
         }
 
-        return updated;
+        await _orderReadCache.RefreshAsync(updatedOrder, _orderStore.GetAll());
+        _logger.LogInformation("Order {OrderId} updated to status {Status}.", orderId, status);
+
+        return true;
     }
 }

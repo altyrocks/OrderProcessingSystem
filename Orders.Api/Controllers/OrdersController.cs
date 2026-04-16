@@ -1,16 +1,17 @@
-using Shared.Messaging;
 using Orders.Api.Models;
 using Orders.Api.Services;
+using Shared.Messaging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Orders.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class OrdersController(ServiceBusPublisher publisher, OrderStore orderStore) : ControllerBase
+public class OrdersController(ServiceBusPublisher publisher, OrderStore orderStore, OrderReadCache orderReadCache) : ControllerBase
 {
     private readonly ServiceBusPublisher _publisher = publisher;
     private readonly OrderStore _orderStore = orderStore;
+    private readonly OrderReadCache _orderReadCache = orderReadCache;
 
     [HttpPost]
     public async Task<IActionResult> CreateOrder(Order order)
@@ -20,6 +21,7 @@ public class OrdersController(ServiceBusPublisher publisher, OrderStore orderSto
         order.CreatedAt = DateTime.UtcNow;
 
         _orderStore.Add(order);
+        await _orderReadCache.RefreshAsync(order, _orderStore.GetAll());
 
         var orderCreatedEvent = new OrderCreatedEvent
         {
@@ -43,18 +45,41 @@ public class OrdersController(ServiceBusPublisher publisher, OrderStore orderSto
     }
 
     [HttpGet]
-    public IActionResult GetOrders()
+    public async Task<IActionResult> GetOrders()
     {
-        return Ok(_orderStore.GetAll());
+        var cachedOrders = await _orderReadCache.GetAllAsync();
+
+        if (cachedOrders != null)
+        {
+            return Ok(cachedOrders);
+        }
+
+        var orders = _orderStore.GetAll();
+        await _orderReadCache.SetAllAsync(orders);
+
+        return Ok(orders);
     }
 
     [HttpGet("{id}")]
-    public IActionResult GetOrder(Guid id)
+    public async Task<IActionResult> GetOrder(Guid id)
     {
+        var cachedOrder = await _orderReadCache.GetAsync(id);
+
+        if (cachedOrder != null)
+        {
+            return Ok(new
+            {
+                orderId = cachedOrder.Id,
+                status = cachedOrder.Status
+            });
+        }
+
         var order = _orderStore.Get(id);
 
         if (order == null)
             return NotFound();
+
+        await _orderReadCache.SetAsync(order);
 
         return Ok(new
         {

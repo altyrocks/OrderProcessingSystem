@@ -1,4 +1,4 @@
-
+using Microsoft.Extensions.Caching.Distributed;
 using Orders.Api.Services;
 
 namespace Orders.Api
@@ -8,8 +8,23 @@ namespace Orders.Api
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
+
+            if (string.IsNullOrWhiteSpace(redisConnectionString))
+            {
+                builder.Services.AddDistributedMemoryCache();
+            }
+            else
+            {
+                builder.Services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnectionString;
+                    options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "ordersystem:";
+                });
+            }
 
             builder.Services.AddSingleton<OrderStore>();
+            builder.Services.AddSingleton<OrderReadCache>();
             builder.Services.AddSingleton<ServiceBusPublisher>();
             builder.Services.AddHostedService<OrderEventsSubscriber>();
             builder.Services.AddControllers();
@@ -36,7 +51,6 @@ namespace Orders.Api
             app.UseHttpsRedirection();
 
             app.UseAuthorization();
-
 
             app.MapControllers();
 

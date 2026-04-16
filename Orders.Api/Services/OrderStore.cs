@@ -28,15 +28,15 @@ public class OrderStore
         return order;
     }
 
-    public bool UpdateStatus(Guid id, string status)
+    public Order? UpdateStatus(Guid id, string status)
     {
         if (!_orders.TryGetValue(id, out var order))
         {
-            return false;
+            return null;
         }
 
         order.Status = status;
 
-        return true;
+        return order;
     }
 }
