@@ -11,6 +11,7 @@ builder.ConfigureFunctionsWebApplication();
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights()
+    .AddSingleton<ProcessedEventStore>()
     .AddSingleton<ServiceBusPublisher>();
 
 builder.Build().Run();

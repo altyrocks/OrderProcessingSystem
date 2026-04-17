@@ -25,6 +25,7 @@ namespace Orders.Api
 
             builder.Services.AddSingleton<OrderStore>();
             builder.Services.AddSingleton<OrderReadCache>();
+            builder.Services.AddSingleton<ProcessedEventStore>();
             builder.Services.AddSingleton<ServiceBusPublisher>();
             builder.Services.AddHostedService<OrderEventsSubscriber>();
             builder.Services.AddControllers();

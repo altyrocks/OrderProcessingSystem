@@ -11,6 +11,7 @@ public class OrderEventsSubscriber : BackgroundService
     private readonly ILogger<OrderEventsSubscriber> _logger;
     private readonly OrderStore _orderStore;
     private readonly OrderReadCache _orderReadCache;
+    private readonly ProcessedEventStore _processedEventStore;
     private ServiceBusClient? _client;
     private ServiceBusProcessor? _processor;
 
@@ -18,12 +19,14 @@ public class OrderEventsSubscriber : BackgroundService
         IConfiguration configuration,
         ILogger<OrderEventsSubscriber> logger,
         OrderStore orderStore,
-        OrderReadCache orderReadCache)
+        OrderReadCache orderReadCache,
+        ProcessedEventStore processedEventStore)
     {
         _configuration = configuration;
         _logger = logger;
         _orderStore = orderStore;
         _orderReadCache = orderReadCache;
+        _processedEventStore = processedEventStore;
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
@@ -72,30 +75,55 @@ public class OrderEventsSubscriber : BackgroundService
 
     private async Task ProcessMessageAsync(ProcessMessageEventArgs args)
     {
-        var message = args.Message.Body.ToString();
-        var envelope = JsonSerializer.Deserialize<EventEnvelope<JsonElement>>(message);
+        string? eventKey = null;
 
-        if (envelope == null)
+        try
         {
-            _logger.LogWarning("Received an invalid event message.");
-            return;
+            var message = args.Message.Body.ToString();
+            var envelope = JsonSerializer.Deserialize<EventEnvelope<JsonElement>>(message);
+
+            if (envelope == null)
+            {
+                _logger.LogWarning("Received an invalid event message.");
+                await args.CompleteMessageAsync(args.Message);
+                return;
+            }
+
+            eventKey = $"{envelope.EventType}:{envelope.CorrelationId}";
+
+            if (!_processedEventStore.TryBegin(eventKey))
+            {
+                _logger.LogInformation("Skipping duplicate order status event {EventKey}", eventKey);
+                await args.CompleteMessageAsync(args.Message);
+                return;
+            }
+
+            var updated = envelope.EventType switch
+            {
+                "InventoryReserved" => await UpdateOrderStatusAsync<InventoryReservedEvent>(envelope, "Inventory Reserved"),
+                "PaymentSucceeded" => await UpdateOrderStatusAsync<PaymentSucceededEvent>(envelope, "Payment Succeeded"),
+                "PaymentFailed" => await UpdateOrderStatusAsync<PaymentFailedEvent>(envelope, "Payment Failed"),
+                "InventoryReleased" => await UpdateOrderStatusAsync<InventoryReleasedEvent>(envelope, "Inventory Released"),
+                _ => false
+            };
+
+            if (!updated)
+            {
+                _logger.LogInformation("Ignored event type {EventType} for order status updates.", envelope.EventType);
+            }
+
+            await args.CompleteMessageAsync(args.Message);
         }
-
-        var updated = envelope.EventType switch
+        catch (Exception ex)
         {
-            "InventoryReserved" => await UpdateOrderStatusAsync<InventoryReservedEvent>(envelope, "Inventory Reserved"),
-            "PaymentSucceeded" => await UpdateOrderStatusAsync<PaymentSucceededEvent>(envelope, "Payment Succeeded"),
-            "PaymentFailed" => await UpdateOrderStatusAsync<PaymentFailedEvent>(envelope, "Payment Failed"),
-            "InventoryReleased" => await UpdateOrderStatusAsync<InventoryReleasedEvent>(envelope, "Inventory Released"),
-            _ => false
-        };
+            if (eventKey != null)
+            {
+                _processedEventStore.MarkFailed(eventKey);
+            }
 
-        if (!updated)
-        {
-            _logger.LogInformation("Ignored event type {EventType} for order status updates.", envelope.EventType);
+            _logger.LogError(ex, "Order event subscriber error while processing a message.");
+            throw;
         }
-
-        await args.CompleteMessageAsync(args.Message);
     }
 
     private Task ProcessErrorAsync(ProcessErrorEventArgs args)
