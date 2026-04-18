@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Azure.Messaging.ServiceBus;
-using Microsoft.Extensions.Hosting;
 using Shared.Messaging;
 
 namespace Orders.Api.Services;

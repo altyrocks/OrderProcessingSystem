@@ -119,6 +119,8 @@ public class InventoryFunction
             }
 
             _logger.LogError(ex, "Error processing inventory event");
+
+            throw;
         }
     }
 }

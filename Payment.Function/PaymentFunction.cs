@@ -86,6 +86,8 @@ public class PaymentFunction(ILoggerFactory loggerFactory, ProcessedEventStore p
             }
 
             _logger.LogError(ex, "Error processing payment event");
+
+            throw;
         }
     }
 }

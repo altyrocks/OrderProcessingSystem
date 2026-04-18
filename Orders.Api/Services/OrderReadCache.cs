@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Microsoft.Extensions.Caching.Distributed;
 using Orders.Api.Models;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Orders.Api.Services;
 

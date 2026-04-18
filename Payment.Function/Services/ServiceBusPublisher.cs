@@ -20,6 +20,7 @@ public class ServiceBusPublisher
     public async Task PublishAsync<T>(T message)
     {
         var json = JsonSerializer.Serialize(message);
+
         var sbMessage = new ServiceBusMessage(json)
         {
             ContentType = "application/json"
